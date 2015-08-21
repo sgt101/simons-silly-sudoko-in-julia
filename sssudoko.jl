@@ -1,4 +1,4 @@
-module suduko 
+module sssudoko 
 using Base.Dates
 
 row1 = [0,0,0,0,0,0,0,7,0]
@@ -38,6 +38,7 @@ function howManySquares(matrix::Array)
     return count
 end
 
+"Returns an instance of CandidateSet"
 function generateCandidates (rx::Int,ry::Int, matrix::Array)
     starter=CandidateSet(rx,ry,Int[0])
     if matrix [rx,ry]!=0 
@@ -52,9 +53,8 @@ function generateCandidates (rx::Int,ry::Int, matrix::Array)
             push!(elements,i)
         end
     end
-  
     if (elements==[])
-        throw (DomainError()) # because this is an matrix with a contradiction not yet discovered
+        throw (UndefRefError()) # because this is an matrix with a contradiction not yet discovered
         end
           candidate=CandidateSet(rx,ry,elements)
     return candidate
