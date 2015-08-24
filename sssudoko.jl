@@ -21,6 +21,7 @@ p8=[3,9,0,0,0,5,0,1,0]
 p9=[0,0,0,7,1,6,0,5,0]
 #array = hvcat (9,row1,row2,row3,row4,row5,row6,row7,row8,row9)
 array =hvcat(9,p1,p2,p3,p4,p5,p6,p7,p8,p9)
+result = []
 type CandidateSet{T}
     rx::Int
     ry::Int
@@ -34,7 +35,6 @@ function howManySquares(matrix::Array)
         if thing==0 count+=1     
         end
     end
-    #if (count <3) println(matrix) end
     return count
 end
 
@@ -54,6 +54,7 @@ function generateCandidates (rx::Int,ry::Int, matrix::Array)
         end
     end
     if (elements==[])
+       # print ("rx=",rx,"ry=",ry)
         throw (UndefRefError()) # because this is an matrix with a contradiction not yet discovered
         end
           candidate=CandidateSet(rx,ry,elements)
@@ -75,7 +76,8 @@ function createCandidateMatrix (things::Array)
     return (matrix2)
 end
 
-#extract relevant elements for considering a square in suduko 
+"extract relevant elements for considering a square in sudoko"
+"the row the item is in, the column it is in and the 3*3 local that its in" 
 function rowColumnBlock (rx::Int, ry::Int, matrix::Array)
    # matrix[rx,ry] = 0
   row = matrix[rx,:]
@@ -93,7 +95,7 @@ function rowColumnBlock (rx::Int, ry::Int, matrix::Array)
     allMembers = [reshape(block,1,9);reshape(column,1,9);reshape(row,1,9)]
     return allMembers
 end
-
+#=
 function exclusiveRowColumnBlock(rx::Int, ry::Int, matrix::Array)
     value = matrix[rx,ry]
     matrix[rx,ry] = 0
@@ -101,6 +103,7 @@ function exclusiveRowColumnBlock(rx::Int, ry::Int, matrix::Array)
     matrix[rx,ry] = value
     return retval
 end
+=#
 
 function copytx (matrix::Array{Int})
     retval = Array (Int,length(matrix))
@@ -149,80 +152,74 @@ function notConsistent (matrix::Array)
 
 
 
-    
 
 function solutionSearch( matrix::Array, depth::Int)
-	# for every element in matrix which is a 0 (undefined) look
-	# at all the other 0s to find any that contain exclusions
-	# which can solve this square
-	# check singles and pairs only for now !
+    # for every element in matrix which is a 0 (undefined) look
+    # at all the other 0s to find any that contain exclusions
+    # which can solve this square
+    # check singles and pairs only for now !
     try 
-	touched = false
-	newMatrix = Int[]
-	candidateSet = createCandidateMatrix(matrix)
-	if (notConsistent(matrix)) 
-	 #print ("not consistent")
-	return false
-	else 
-	for i in 1:81
-	    if (matrix[i]==0 ) #something to do
-	       if (length(candidateSet[i].candidates)==1)
-	       	  #simple write in
-	       	  matrix[i]=candidateSet[i].candidates[1]
-	       	#  println("i=",i,"val=",matrix[i])
-		   #   candidateSet[i].candidates=[]
-		      if (notConsistent(matrix))
-		          return false 
-		      end #unwind as this is a dead attempt 
-		      touched = true
-		     # println("MA>>",matrix[i])
-		  end #end if
-		end #end if
-	end	#end for      
-	candidateSet=createCandidateMatrix(matrix) #in case a repair was needed
+    touched = false
+    newMatrix = Int[]
+    candidateSet = createCandidateMatrix(matrix)
+    if (notConsistent(matrix)) 
+    return false
+    else 
+    for i in 1:81
+        if (matrix[i]==0 ) #something to do
+           if (length(candidateSet[i].candidates)==1)
+              #simple write in
+        #      println("write in=",candidateSet[i].candidates[1]," at ",i)
+              matrix[i]=candidateSet[i].candidates[1]
+            if (notConsistent(matrix))
+         #         println("found contradiction")
+                  return false 
+              end #unwind as this is a dead attempt 
+              touched = true
+            end #end if
+        end #end if
+    end #end for      
+    candidateSet=createCandidateMatrix(matrix) #in case a repair was needed
     tries = zeros(9,9)
     marktries(tries,matrix)
     while (!complete (tries)) 
     index = shortest(candidateSet,tries)
+    println("depth=",depth," index=",index)
     for guess in candidateSet[index].candidates
-	          #= for every option try writing it in and then solving the matrix with that assumption
-	          if a contradiction arises then stop and unwind and try a different option =#     	    
-		      newMatrix = copytx(matrix)
-		      newMatrix[index] =guess
-		      if(!notConsistent (newMatrix))
-		          if(solutionSearch (newMatrix,depth+1))
+              #= for every option try writing it in and then solving the matrix with that assumption
+              if a contradiction arises then stop and unwind and try a different option =#          
+              newMatrix = copytx(matrix)
+              newMatrix[index] =guess
+              if(!notConsistent (newMatrix))
+                  if(solutionSearch (newMatrix,depth+1))
                     touched = true
                     matrix = newMatrix
                    end
               else
-                matrix[index] = 0
+               matrix[index] = 0
               end#if 
-                cache2= newMatrix
-            end #for
-            tries [index]=1
-	   end #while
-	  end #else
-	 # end
-	 if(rem(datetime2unix(now()),10)==0.0)
-	   println(matrix)
-	   end
-	  if (howManySquares(matrix)==0)
-	   println(matrix)
-	   toc
-	   exit()
-	   end
-	  if (depth<2) println(matrix)
-	  return (touched)
-	  end
-	  
+        end #for
+    return false
+    end #else
+    end
+     if(rem(datetime2unix(now()),10)==0.0)
+       println(matrix)
+       end
+      if (howManySquares(matrix)==0)
+       throw (InterruptException())
+       end
+            
  catch (e)
-    #println(e)
+        if (isa(e,InterruptException))
+            global result = matrix         
+            return true
+         end
   return false
   end
  end
 
-bestSoFar =81
 
+ 
 function marktries(tries::Array,tester::Array)
     for i in 1:length(tester)
         if (tester[i]!=0) 
@@ -281,11 +278,9 @@ function hypothesis (guess::Int, tester::Array{CandidateSet})
     end
     return (true)
 end
-    tic
-    #candidates = createCandidateMatrix(array)
-    solutionSearch (array,0)
-    print (cache,"\n")
-    print (cache2,"\n")
-
+   
+@time(solutionSearch(array,0))
+    
+println("result is ",result)
 
 end #module
